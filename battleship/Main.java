@@ -4,11 +4,66 @@ import java.util.Arrays;
 import java.util.Scanner;
 
 public class Main {
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        Board board = new Board();
+    static Scanner scanner = new Scanner(System.in);
+    static int player = 1;
+    static Board board1;
+    static Board board2;
 
-        board.print();
+    public static void main(String[] args) {
+        System.out.println("Player 1, place your ships on the game field");
+        System.out.println();
+        Main.board1 = Main.boardSetup();
+        Main.switchPlayer();
+        System.out.println();
+        System.out.println("Player 2, place your ships to the game field");
+        System.out.println();
+        Main.board2 = Main.boardSetup();
+        Main.switchPlayer();
+
+        gameLoop:
+        while (true) {
+            Main.printBoards();
+            System.out.printf("Player %d, it's your turn:%n", Main.player);
+            System.out.println();
+
+            Coordinates coordinates = null;
+            do {
+                String input = scanner.nextLine();
+                try {
+                    coordinates = new Coordinates(input);
+                } catch (InvalidCoordinatesException e) {
+                    System.out.println("Error! You entered the wrong coordinates! Try again:");
+                    System.out.println();
+                }
+            } while (coordinates == null);
+
+            HitType hit = Main.opponentsBoard().hit(coordinates);
+            System.out.println();
+            switch (hit) {
+                case MISS -> System.out.println("You missed!");
+                case HIT_SHIP -> System.out.println("You hit a ship!");
+                case SANK_SHIP -> System.out.println("You sank a ship!");
+                case SANK_LAST_SHIP -> {
+                    System.out.println("You sank the last ship. You won. Congratulations!");
+                    break gameLoop;
+                }
+            }
+            System.out.println();
+            Main.switchPlayer();
+        }
+    }
+
+    private static void switchPlayer() {
+        System.out.println("Press Enter and pass the move to another player");
+        System.out.print("...");
+        Main.scanner.nextLine();
+        Main.player = Main.player == 1 ? 2 : 1;
+    }
+
+    private static Board boardSetup() {
+        Scanner scanner = Main.scanner;
+        Board board = new Board();
+        board.print(false);
         Ship[] ships = new Ship[ShipType.values().length];
         for (int i = 0; i < ShipType.values().length; i++) {
             ShipType shipType = ShipType.values()[i];
@@ -18,6 +73,7 @@ public class Main {
                     shipType.getName(),
                     shipType.getLength()
             );
+            System.out.println();
             Ship ship = null;
             do {
                 String input = scanner.nextLine();
@@ -36,50 +92,31 @@ public class Main {
                 }
             } while (ship == null);
             ships[i] = ship;
-
-            board.print();
+            board.print(false);
         }
         board.setShips(ships);
+        return board;
+    }
 
-        System.out.println("The game starts!");
-        board.setMasked(true);
-        System.out.println();
-        board.print();
-        System.out.println();
+    private static void printBoards() {
+        Main.opponentsBoard().print(true);
+        System.out.println("---------------------");
+        Main.ownBoard().print(false);
+    }
 
-        gameLoop:
-        while (true) {
-            System.out.println("Take a shot!");
-            System.out.println();
-            Coordinates coordinates = null;
-            do {
-                String input = scanner.nextLine();
-                try {
-                    coordinates = new Coordinates(input);
-                } catch (InvalidCoordinatesException e) {
-                    System.out.println("Error! You entered the wrong coordinates! Try again:");
-                    System.out.println();
-                }
-            } while (coordinates == null);
-            HitType hit = board.hit(coordinates);
-            board.print();
-            System.out.println();
-            switch (hit) {
-                case MISS -> {
-                    System.out.println("You missed. Try again:");
-                }
-                case HIT_SHIP -> {
-                    System.out.println("You hit a ship! Try again:");
-                }
-                case SANK_SHIP -> {
-                    System.out.println("You sank a ship! Specify a new target:");
-                }
-                case SANK_LAST_SHIP -> {
-                    System.out.println("You sank the last ship. You won. Congratulations!");
-                    break gameLoop;
-                }
-            }
-            System.out.println();
+    private static Board ownBoard() {
+        if (Main.player == 1) {
+            return Main.board1;
+        } else {
+            return Main.board2;
+        }
+    }
+
+    private static Board opponentsBoard() {
+        if (Main.player == 1) {
+            return Main.board2;
+        } else {
+            return Main.board1;
         }
     }
 }
@@ -95,7 +132,6 @@ class UnreachableCodeRuntimeException extends RuntimeException {
 class Board {
     private final CellType[][] grid;
     private Ship[] ships;
-    private boolean masked;
     public static final int HEIGHT = 10;
     public static final int WIDTH = 10;
     public static final String ROW_LABELS = "ABCDEFGHIJ";
@@ -106,25 +142,20 @@ class Board {
             Arrays.fill(this.grid[i], CellType.FOG_OF_WAR);
         }
         this.ships = new Ship[ShipType.values().length];
-        this.masked = false;
     }
 
     public void setShips(Ship[] ships) {
         this.ships = ships;
     }
 
-    public void setMasked(boolean masked) {
-        this.masked = masked;
-    }
-
-    public void print() {
+    public void print(boolean masked) {
         System.out.println("  1 2 3 4 5 6 7 8 9 10");
         for (int i = 0; i < HEIGHT; i++) {
             StringBuilder row = new StringBuilder();
             row.append(ROW_LABELS.charAt(i));
             for (int j = 0; j < WIDTH; j++) {
                 row.append(" ");
-                row.append(grid[i][j].getSymbol(this.masked));
+                row.append(grid[i][j].getSymbol(masked));
             }
             System.out.println(row);
         }
@@ -281,16 +312,6 @@ class Coordinates {
         return this.column;
     }
 
-    public int[] getCoordinates() {
-        return new int[]{row, column};
-    }
-
-    public String getCoordinatesString() {
-        char row = Board.ROW_LABELS.charAt(this.row);
-        int column = this.column + 1;
-        return String.format("%c%d", row, column);
-    }
-
     public boolean sameRow(Coordinates other) {
         return this.row == other.row;
     }
@@ -365,7 +386,6 @@ class InvalidCoordinatesPairException extends Exception {
 // public class Ship {
 class Ship {
     private final CoordinatesPair coordinates;
-    private final ShipType type;
     private boolean hasSunk;
 
     Ship(String coordinatesString, ShipType type)
@@ -375,7 +395,6 @@ class Ship {
             throw new InvalidShipLengthException("Invalid coordinates: " + coordinatesString);
         }
         this.coordinates = coordinatesPair;
-        this.type = type;
         this.hasSunk = false;
     }
 
@@ -461,4 +480,3 @@ enum ShipType {
         return this.length;
     }
 }
-
