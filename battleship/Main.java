@@ -38,6 +38,7 @@ public class Main {
         }
 
         System.out.println("The game starts!");
+        board.setMasked(true);
         System.out.println();
         board.print();
         System.out.println();
@@ -63,6 +64,8 @@ public class Main {
             System.out.println("You missed!");
             System.out.println();
         }
+        board.setMasked(false);
+        board.print();
     }
 }
 
@@ -76,15 +79,25 @@ class UnreachableCodeRuntimeException extends RuntimeException {
 // public class Board {
 class Board {
     CellType[][] grid;
+    boolean masked;
     public static final int HEIGHT = 10;
     public static final int WIDTH = 10;
     public static final String ROW_LABELS = "ABCDEFGHIJ";
 
     Board() {
         this.grid = new CellType[HEIGHT][WIDTH];
+        this.masked = false;
         for (int i = 0; i < HEIGHT; i++) {
             Arrays.fill(this.grid[i], CellType.FOG_OF_WAR);
         }
+    }
+
+    public boolean isMasked() {
+        return masked;
+    }
+
+    public void setMasked(boolean masked) {
+        this.masked = masked;
     }
 
     public void print() {
@@ -94,7 +107,7 @@ class Board {
             row.append(ROW_LABELS.charAt(i));
             for (int j = 0; j < WIDTH; j++) {
                 row.append(" ");
-                row.append(grid[i][j].getSymbol());
+                row.append(grid[i][j].getSymbol(this.masked));
             }
             System.out.println(row);
         }
@@ -154,8 +167,12 @@ class Board {
             this.symbol = symbol;
         }
 
-        char getSymbol() {
-            return this.symbol;
+        char getSymbol(boolean masked) {
+            if (masked && this.symbol == 'O') {
+                return '~';
+            } else {
+                return this.symbol;
+            }
         }
     }
 }
