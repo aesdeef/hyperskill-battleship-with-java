@@ -36,6 +36,33 @@ public class Main {
 
             board.print();
         }
+
+        System.out.println("The game starts!");
+        System.out.println();
+        board.print();
+        System.out.println();
+        System.out.println("Take a shot!");
+        System.out.println();
+        Coordinates coordinates = null;
+        do {
+            String input = scanner.nextLine();
+            try {
+                coordinates = new Coordinates(input);
+            } catch (InvalidCoordinatesException e) {
+                System.out.println("Error! You entered the wrong coordinates! Try again:");
+                System.out.println();
+            }
+        } while (coordinates == null);
+        boolean hit = board.hit(coordinates);
+        board.print();
+        System.out.println();
+        if (hit) {
+            System.out.println("You hit a ship!");
+            System.out.println();
+        } else {
+            System.out.println("You missed!");
+            System.out.println();
+        }
     }
 }
 
@@ -101,6 +128,18 @@ class Board {
         for (Coordinates coordinates : shipCells) {
             this.grid[coordinates.getRow()][coordinates.getColumn()] = CellType.YOUR_SHIP;
         }
+    }
+
+    public boolean hit(Coordinates coordinates) {
+        int row = coordinates.getRow();
+        int column = coordinates.getColumn();
+        boolean hit = this.grid[row][column] == CellType.YOUR_SHIP;
+        if (hit) {
+            this.grid[row][column] = CellType.HIT_SHIP;
+        } else {
+            this.grid[row][column] = CellType.MISS;
+        }
+        return hit;
     }
 
     private enum CellType {
