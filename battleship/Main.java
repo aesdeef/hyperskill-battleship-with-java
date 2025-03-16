@@ -9,7 +9,9 @@ public class Main {
         Board board = new Board();
 
         board.print();
-        for (ShipType shipType : ShipType.values()) {
+        Ship[] ships = new Ship[ShipType.values().length];
+        for (int i = 0; i < ShipType.values().length; i++) {
+            ShipType shipType = ShipType.values()[i];
             System.out.println();
             System.out.printf(
                     "Enter the coordinates of the %s (%d cells):%n",
@@ -33,39 +35,52 @@ public class Main {
                     System.out.println("Error! Wrong length of the Submarine! Try again:");
                 }
             } while (ship == null);
+            ships[i] = ship;
 
             board.print();
         }
+        board.setShips(ships);
 
         System.out.println("The game starts!");
         board.setMasked(true);
         System.out.println();
         board.print();
         System.out.println();
-        System.out.println("Take a shot!");
-        System.out.println();
-        Coordinates coordinates = null;
-        do {
-            String input = scanner.nextLine();
-            try {
-                coordinates = new Coordinates(input);
-            } catch (InvalidCoordinatesException e) {
-                System.out.println("Error! You entered the wrong coordinates! Try again:");
-                System.out.println();
-            }
-        } while (coordinates == null);
-        boolean hit = board.hit(coordinates);
-        board.print();
-        System.out.println();
-        if (hit) {
-            System.out.println("You hit a ship!");
+
+        gameLoop:
+        while (true) {
+            System.out.println("Take a shot!");
             System.out.println();
-        } else {
-            System.out.println("You missed!");
+            Coordinates coordinates = null;
+            do {
+                String input = scanner.nextLine();
+                try {
+                    coordinates = new Coordinates(input);
+                } catch (InvalidCoordinatesException e) {
+                    System.out.println("Error! You entered the wrong coordinates! Try again:");
+                    System.out.println();
+                }
+            } while (coordinates == null);
+            HitType hit = board.hit(coordinates);
+            board.print();
+            System.out.println();
+            switch (hit) {
+                case MISS -> {
+                    System.out.println("You missed. Try again:");
+                }
+                case HIT_SHIP -> {
+                    System.out.println("You hit a ship! Try again:");
+                }
+                case SANK_SHIP -> {
+                    System.out.println("You sank a ship! Specify a new target:");
+                }
+                case SANK_LAST_SHIP -> {
+                    System.out.println("You sank the last ship. You won. Congratulations!");
+                    break gameLoop;
+                }
+            }
             System.out.println();
         }
-        board.setMasked(false);
-        board.print();
     }
 }
 
@@ -78,22 +93,24 @@ class UnreachableCodeRuntimeException extends RuntimeException {
 // BOARD
 // public class Board {
 class Board {
-    CellType[][] grid;
-    boolean masked;
+    private final CellType[][] grid;
+    private Ship[] ships;
+    private boolean masked;
     public static final int HEIGHT = 10;
     public static final int WIDTH = 10;
     public static final String ROW_LABELS = "ABCDEFGHIJ";
 
     Board() {
         this.grid = new CellType[HEIGHT][WIDTH];
-        this.masked = false;
         for (int i = 0; i < HEIGHT; i++) {
             Arrays.fill(this.grid[i], CellType.FOG_OF_WAR);
         }
+        this.ships = new Ship[ShipType.values().length];
+        this.masked = false;
     }
 
-    public boolean isMasked() {
-        return masked;
+    public void setShips(Ship[] ships) {
+        this.ships = ships;
     }
 
     public void setMasked(boolean masked) {
@@ -143,16 +160,41 @@ class Board {
         }
     }
 
-    public boolean hit(Coordinates coordinates) {
+    public HitType hit(Coordinates coordinates) {
         int row = coordinates.getRow();
         int column = coordinates.getColumn();
-        boolean hit = this.grid[row][column] == CellType.YOUR_SHIP;
-        if (hit) {
-            this.grid[row][column] = CellType.HIT_SHIP;
-        } else {
-            this.grid[row][column] = CellType.MISS;
+        Ship hitShip = null;
+        boolean allSunk = true;
+        for (Ship ship : this.ships) {
+            if (ship.includes(coordinates)) {
+                hitShip = ship;
+                this.grid[row][column] = CellType.HIT_SHIP;
+                boolean sankShip = true;
+                for (Coordinates step : hitShip.getCoordinatesPair().getSteps()) {
+                    if (this.grid[step.getRow()][step.getColumn()] != CellType.HIT_SHIP) {
+                        sankShip = false;
+                        break;
+                    }
+                }
+                if (sankShip) {
+                    hitShip.sink();
+                }
+            }
+            if (!ship.hasSunk()) {
+                allSunk = false;
+            }
         }
-        return hit;
+        if (hitShip == null) {
+            this.grid[row][column] = CellType.MISS;
+            return HitType.MISS;
+        }
+        if (allSunk) {
+            return HitType.SANK_LAST_SHIP;
+        }
+        if (hitShip.hasSunk()) {
+            return HitType.SANK_SHIP;
+        }
+        return HitType.HIT_SHIP;
     }
 
     private enum CellType {
@@ -181,6 +223,14 @@ class ShipSurroundingsNotEmptyException extends Exception {
     public ShipSurroundingsNotEmptyException(String message) {
         super(message);
     }
+}
+
+// HIT_TYPE
+enum HitType {
+    MISS,
+    HIT_SHIP,
+    SANK_SHIP,
+    SANK_LAST_SHIP
 }
 
 // COORDINATES
@@ -217,6 +267,10 @@ class Coordinates {
         }
         this.row = Board.ROW_LABELS.indexOf(rowString);
         this.column = column;
+    }
+
+    public boolean equals(Coordinates other) {
+        return this.row == other.row && this.column == other.column;
     }
 
     public int getRow() {
@@ -312,6 +366,7 @@ class InvalidCoordinatesPairException extends Exception {
 class Ship {
     private final CoordinatesPair coordinates;
     private final ShipType type;
+    private boolean hasSunk;
 
     Ship(String coordinatesString, ShipType type)
             throws InvalidShipCoordinatesException, InvalidShipLengthException {
@@ -321,6 +376,15 @@ class Ship {
         }
         this.coordinates = coordinatesPair;
         this.type = type;
+        this.hasSunk = false;
+    }
+
+    public void sink() {
+        this.hasSunk = true;
+    }
+
+    public boolean hasSunk() {
+        return this.hasSunk;
     }
 
     private static CoordinatesPair stringToCoordinatesPair(String coordinatesString)
@@ -350,9 +414,13 @@ class Ship {
         return this.coordinates;
     }
 
-    @SuppressWarnings("unused")
-    public ShipType getType() {
-        return this.type;
+    public boolean includes(Coordinates coordinates) {
+        for (Coordinates step : this.getCoordinatesPair().getSteps()) {
+            if (step.equals(coordinates)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
