@@ -31,8 +31,8 @@ public class CoordinatesPair {
 
     public Coordinates[] getSteps() {
         Coordinates[] steps = new Coordinates[this.distance + 1];
-        int stepX = (this.end.getColumn() - this.start.getColumn()) / this.distance;
-        int stepY = (this.end.getRow() - this.start.getRow()) / this.distance;
+        int stepX = (this.end.getRow() - this.start.getRow()) / this.distance;
+        int stepY = (this.end.getColumn() - this.start.getColumn()) / this.distance;
         for (int i = 0; i < steps.length; i++) {
             try {
                 steps[i] = new Coordinates(

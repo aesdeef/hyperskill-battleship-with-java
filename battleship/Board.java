@@ -35,9 +35,9 @@ public class Board {
 
         // Check if the area is empty
         int minX = Math.min(shipStart.getRow(), shipEnd.getRow()) - 1;
-        int maxX = Math.max(shipStart.getRow(), shipEnd.getRow()) - 1;
+        int maxX = Math.max(shipStart.getRow(), shipEnd.getRow()) + 1;
         int minY = Math.min(shipStart.getColumn(), shipEnd.getColumn()) - 1;
-        int maxY = Math.max(shipStart.getColumn(), shipEnd.getColumn()) - 1;
+        int maxY = Math.max(shipStart.getColumn(), shipEnd.getColumn()) + 1;
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 // skip coordinates that are out of bounds

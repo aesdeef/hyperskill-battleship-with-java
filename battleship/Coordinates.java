@@ -23,7 +23,7 @@ public class Coordinates {
         }
         int column;
         try {
-            column = Integer.parseInt(columnString);
+            column = Integer.parseInt(columnString) - 1;
         } catch (NumberFormatException e) {
             throw new InvalidCoordinatesException("Invalid column: " + columnString);
         }
